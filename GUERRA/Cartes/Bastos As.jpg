@@ -1,0 +1,151 @@
+<?php
+
+function reparteix (&$deck, &$jugadors, $num_jugadors){
+    while (count ($deck)>0){
+        for ($j=0;$j<$num_jugadors;$j++){
+            if (count ($deck)>0)
+                $jugadors[$j][]=array_shift($deck);
+        }
+    }
+}
+
+function next_player ($id_jugador, $jugadors){
+
+    $id_seguent = $id_jugador+1; 
+    if ($id_jugador+1==count($jugadors))    
+        $id_seguent = 0;
+    
+    while (count($jugadors[$id_seguent])==0){ //per furtar-li una carta n'ha de tindre
+        if ($id_seguent+1==count($jugadors))    
+            $id_seguent = 0;
+        else
+            $id_seguent++;
+        if ($id_jugador == $id_seguent)
+            break;
+    }
+    return $id_seguent;
+}
+
+
+function furtar ($id_jugador,&$jugadors){
+        
+    $id_seguent = next_player($id_jugador, $jugadors);
+    if ($id_jugador != $id_seguent){
+        shuffle($jugadors[$id_seguent]);
+        $jugadors[$id_jugador][]=array_shift($jugadors[$id_seguent]);
+    }
+
+}
+
+function descartar ($id_jugador, &$jugadors, &$deck ){
+    foreach ($jugadors[$id_jugador] as $key=>$cards){
+        if (($cards["face"]=="Sota" && $cards["suit"]=="Ors")||($cards["face"]=="Borrar"))
+                continue;
+            for ($i = 0; $i<count($jugadors[$id_jugador]);$i++){
+                if (($jugadors[$id_jugador][$i]["face"]=="Sota" && $jugadors[$id_jugador][$i]["suit"]== "Ors")
+                    || ($jugadors[$id_jugador][$i]["face"]=="Borrar")|| ($jugadors[$id_jugador][$key]["face"]=="Borrar"))
+                    continue;
+                if ($jugadors[$id_jugador][$i]["face"]==$cards["face"] && $jugadors[$id_jugador][$i]["suit"]!=$cards["suit"]){
+                    $deck[]= $jugadors[$id_jugador][$i];
+                    $deck[]= $jugadors[$id_jugador][$key];
+
+                    $jugadors[$id_jugador][$i]["face"]="Borrar";
+                    $jugadors[$id_jugador][$key]["face"]="Borrar";
+                    break;
+                }
+            }
+    }
+   $cont=0;
+    while ($cont<count($jugadors[$id_jugador])){
+        if ($jugadors[$id_jugador][$cont]["face"]=="Borrar"){
+            unset($jugadors[$id_jugador][$cont]);
+            $jugadors[$id_jugador]= array_values($jugadors[$id_jugador]);
+            $cont = 0;
+            continue;
+        }
+        $cont++;
+    }
+}
+
+
+function extreu ($face,$suit,&$deck){
+        foreach ($deck as $key=>$cards){
+            if ($cards["face"] == $face && $cards["suit"]== $suit){
+                unset ($deck[$key]);
+                $deck = array_values($deck);
+            }
+        }       
+}
+
+function pintar_partida ($jugadors){
+    foreach ($jugadors as $key=>$jugador){
+        echo "<table>";
+            echo "<thead>";
+                echo "<tr>";
+                    echo "<th> Jugador $key </th>";
+                echo "</tr>";
+            echo "</thead>";
+            echo "<tr>";
+            foreach ($jugador as $card){
+                $nom="\"./Cartes/".$card["suit"]." ".$card["face"].".jpg\"";
+                echo "<td> <img src=$nom> </td>";
+            }
+            echo "</tr>";
+        echo "</table>";
+    } 
+}    
+
+if(isset($_POST["jugar"])){
+
+    $jugadors = unserialize(stripslashes($_POST['jugadors']));
+    $deck = unserialize(stripslashes($_POST['deck']));
+    
+    for ($i=0;$i<count($jugadors);$i++){
+        if (count($jugadors[$i])!=0){
+            furtar($i, $jugadors);
+            descartar($i, $jugadors, $deck);
+        }
+    }
+    
+    pintar_partida ($jugadors);
+
+}
+else{
+    
+    $suits = array (
+        "Ors", "Copes", "Bastos", "Espases"
+    );
+
+    $faces = array (
+        "Dos", "Tres", "Quatre", "Cinc", "Sis", "Set", "Vuit",
+        "Nou", "Sota", "Cavall", "Rei", "As"
+    ); 
+
+    $deck = array();
+
+    foreach ($suits as $suit) {
+        foreach ($faces as $face) {
+            $deck[] = array ( "face" => $face, "suit" => $suit);
+        }
+    }
+
+    shuffle($deck);
+
+    $num_jugadors = 3;
+    extreu ("Sota","Bastos",$deck);
+    reparteix($deck, $jugadors, $num_jugadors);
+    for ($i=0;$i<count($jugadors);$i++){
+        descartar($i, $jugadors, $deck);
+    }
+
+    pintar_partida ($jugadors);
+
+}
+
+?>
+
+<form id="miform" name="miform" method="post" action="<?=$_SERVER['PHP_SELF']?>">
+    <input type="hidden" name="jugadors" value='<?php echo serialize($jugadors) ?>'</input>
+    <input type="hidden" name="deck" value='<?php echo serialize($deck) ?>'</input>
+    <input class="button" name="jugar" type="Submit" value="Jugar" />
+</form>
